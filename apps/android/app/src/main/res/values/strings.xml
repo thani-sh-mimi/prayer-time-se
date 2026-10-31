@@ -10,6 +10,14 @@
     <string name="route_compass_priority_low">Precision: Low</string>
     <string name="route_compass_priority_error">Precision: Error</string>
     <string name="route_home_name">Timetable</string>
+    <string name="route_journal_name">Prayer log</string>
+    <string name="route_journal_title">Prayer log</string>
+    <string name="route_journal_today">Today</string>
+    <string name="route_journal_streak">day streak</string>
+    <string name="route_journal_hint">Tap a prayer once you have prayed. Everything stays on this device.</string>
+    <string name="route_journal_local">Saved on this device only.</string>
+    <string name="route_journal_clear">Clear</string>
+    <string name="route_journal_history_hint">The shade shows how many of the five prayers you marked.</string>
     <string name="route_settings_name">Settings</string>
     <string name="route_settings_city">City</string>
     <string name="route_settings_method">Method</string>

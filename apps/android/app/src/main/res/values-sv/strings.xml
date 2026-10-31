@@ -10,6 +10,14 @@
     <string name="route_compass_priority_low">Precision: Låg</string>
     <string name="route_compass_priority_error">Precision: Fel</string>
     <string name="route_home_name">Schema</string>
+    <string name="route_journal_name">Böner</string>
+    <string name="route_journal_title">Bönelogg</string>
+    <string name="route_journal_today">Idag</string>
+    <string name="route_journal_streak">dagar i rad</string>
+    <string name="route_journal_hint">Tryck på bönen när du har bett. Allt sparas bara på den här enheten.</string>
+    <string name="route_journal_local">Sparas bara på den här enheten.</string>
+    <string name="route_journal_clear">Rensa</string>
+    <string name="route_journal_history_hint">Färgen visar hur många av dagens fem böner du markerade.</string>
     <string name="route_settings_name">Inställningar</string>
     <string name="route_settings_city">Stad</string>
     <string name="route_settings_method">Metod</string>

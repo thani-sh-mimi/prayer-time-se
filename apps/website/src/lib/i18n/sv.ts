@@ -61,5 +61,19 @@ export const sv = {
 		'Installera appen på din telefon för att få snabb åtkomst till böner-tider och meddelanden.',
 	route_settings_download_app_store: 'Ladda ner på App Store',
 	route_settings_download_google_play: 'Ladda ner på Google Play',
-	route_settings_rate_app: 'Kom ihåg att betygsätta appen efter att ha provat den!'
+	route_settings_rate_app: 'Kom ihåg att betygsätta appen efter att ha provat den!',
+
+	// Journal — personal prayer tracking, stored on the device
+	route_journal_name: 'Böner',
+	route_journal_title: 'Bönelogg',
+	route_journal_today: 'Idag',
+	route_journal_streak: 'dagar i rad',
+	route_journal_week: 'av {total} den här veckan',
+	route_journal_hint: 'Tryck på bönen när du har bett. Allt sparas bara på den här enheten.',
+	route_journal_local: 'Sparas bara på den här enheten.',
+	route_journal_history_hint: 'Färgen visar hur många av dagens fem böner du markerade.',
+	route_journal_clear: 'Rensa',
+	route_journal_clear_confirm: 'Rensa hela loggen? Det går inte att ångra.',
+	route_journal_previous_month: 'Föregående månad',
+	route_journal_next_month: 'Nästa månad'
 } as const;

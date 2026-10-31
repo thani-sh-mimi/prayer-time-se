@@ -18,6 +18,7 @@ protocol RouteSpec {
 // AvailableRoutes is a list of all routes used by the application.
 var AvailableRoutes: [RouteSpec] = [
   HomeRouteSpec(),
+  JournalRouteSpec(),
   CompassRouteSpec(),
   SettingsRouteSpec()
 ]
