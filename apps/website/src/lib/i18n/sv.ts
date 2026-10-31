@@ -19,6 +19,10 @@ export const sv = {
 	prayers_type_maghrib: 'Maghrib',
 	prayers_type_isha: 'Isha',
 	route_home_error: 'Error: {message}',
+	route_home_mark_prayer: 'Markera {name} som bedd',
+	route_home_unmark_prayer: 'Ta bort markeringen för {name}',
+	route_home_previous_day: 'Föregående dag',
+	route_home_next_day: 'Nästa dag',
 
 	// Compass
 	route_compass_north_abbreviation: 'N',
