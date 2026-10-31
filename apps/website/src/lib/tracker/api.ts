@@ -85,13 +85,13 @@ export class ApiError extends Error {
 	}
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function send<T>(url: string, options: RequestInit = {}): Promise<T> {
 	const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
 	if (options.body !== undefined) {
 		headers['content-type'] = 'application/json';
 	}
 
-	const response = await fetch(`/api/v2${path}`, {
+	const response = await fetch(url, {
 		...options,
 		headers,
 		credentials: 'same-origin'
@@ -101,27 +101,42 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const body = text ? JSON.parse(text) : null;
 
 	if (!response.ok) {
-		throw new ApiError(response.status, body?.error ?? 'request_failed');
+		// Better Auth answers with { code }, the tracker's own routes with { error }.
+		throw new ApiError(response.status, body?.code ?? body?.error ?? 'request_failed');
 	}
 	return body as T;
+}
+
+function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+	return send<T>(`/api/v2${path}`, options);
 }
 
 export const api = {
 	me: () => request<{ user: TrackerUser; summary: Summary }>('/me'),
 
+	/**
+	 * Sign-up, sign-in and sign-out are Better Auth's endpoints, reached through
+	 * the same proxy. The app has no email: one is derived from the handle in a
+	 * domain that cannot receive mail (RFC 2606 `.invalid`).
+	 */
 	register: (handle: string, displayName: string, password: string) =>
-		request<{ user: TrackerUser }>('/auth/register', {
+		send<{ user: TrackerUser }>('/api/auth/sign-up/email', {
 			method: 'POST',
-			body: JSON.stringify({ handle, displayName, password })
+			body: JSON.stringify({
+				email: `${handle}@tracker.invalid`,
+				password,
+				name: displayName,
+				username: handle
+			})
 		}),
 
 	login: (handle: string, password: string) =>
-		request<{ user: TrackerUser }>('/auth/login', {
+		send<{ user: TrackerUser }>('/api/auth/sign-in/username', {
 			method: 'POST',
-			body: JSON.stringify({ handle, password })
+			body: JSON.stringify({ username: handle, password })
 		}),
 
-	logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
+	logout: () => send<{ success: boolean }>('/api/auth/sign-out', { method: 'POST', body: '{}' }),
 
 	tracker: (days = 120) =>
 		request<{ summary: Summary; days: TrackerDay[]; prayers: Prayer[] }>(`/tracker?days=${days}`),

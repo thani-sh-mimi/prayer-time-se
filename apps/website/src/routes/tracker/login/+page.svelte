@@ -17,16 +17,20 @@
 			return t('route_tracker_generic_error');
 		}
 		switch (caught.code) {
-			case 'invalid_credentials':
+			case 'INVALID_USERNAME_OR_PASSWORD':
+			case 'INVALID_EMAIL_OR_PASSWORD':
+			case 'INVALID_PASSWORD':
 				return t('route_tracker_login_invalid');
-			case 'handle_taken':
+			case 'USERNAME_IS_ALREADY_TAKEN':
+			case 'EMAIL_ALREADY_EXISTS':
 				return t('route_tracker_handle_taken');
-			case 'invalid_handle':
+			case 'INVALID_USERNAME':
+			case 'USERNAME_TOO_SHORT':
+			case 'USERNAME_TOO_LONG':
 				return t('route_tracker_invalid_handle');
-			case 'invalid_password':
+			case 'PASSWORD_TOO_SHORT':
+			case 'PASSWORD_TOO_LONG':
 				return t('route_tracker_invalid_password');
-			case 'invalid_display_name':
-				return t('route_tracker_invalid_display_name');
 			default:
 				return t('route_tracker_generic_error');
 		}

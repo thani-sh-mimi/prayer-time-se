@@ -14,9 +14,11 @@
 		"test:social": "node scripts/e2e-social.mjs"
 	},
 	"dependencies": {
+		"@better-auth/drizzle-adapter": "^1.7.14",
 		"@cloudflare/workers-types": "^4.20250124.3",
 		"@thani-sh/prayer-time-se": "^5.1.0",
 		"@types/node": "^25.3.5",
+		"better-auth": "^1.7.14",
 		"drizzle-orm": "^0.45.1",
 		"hono": "^4.6.18"
 	},

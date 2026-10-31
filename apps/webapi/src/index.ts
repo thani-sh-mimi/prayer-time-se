@@ -4,6 +4,7 @@ import { etag } from 'hono/etag';
 import { logger } from 'hono/logger';
 import { registerV1 } from './routes/v1';
 import { registerV2 } from './routes/v2';
+import { getAuth } from './lib/auth';
 import { runDailySweep } from './lib/sweep';
 import { Env } from '../cf-types';
 
@@ -13,6 +14,9 @@ const app = new Hono<{ Bindings: Env }>();
 app.use(cors());
 app.use(etag());
 app.use(logger());
+
+// Better Auth owns /auth/* (sign-up, sign-in, sign-out, session).
+app.all('/auth/*', (c) => getAuth(c.env).handler(c.req.raw));
 
 // API Routes
 registerV1(app);

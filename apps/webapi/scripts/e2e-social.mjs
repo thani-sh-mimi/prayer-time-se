@@ -10,6 +10,7 @@
  */
 
 const BASE = process.env.API_BASE ?? 'http://127.0.0.1:8799';
+const ORIGIN = process.env.API_ORIGIN ?? 'http://localhost:5173';
 
 let passed = 0;
 let failed = 0;
@@ -28,12 +29,14 @@ function check(name, condition, detail) {
 
 /** One HTTP client with a cookie jar; the app only ever uses one session. */
 function client() {
-	let cookie = '';
+	const jar = new Map();
 	return {
 		async request(path, options = {}) {
-			const headers = { ...(options.headers ?? {}) };
-			if (cookie) {
-				headers.cookie = cookie;
+			// Better Auth rejects a state-changing request without an Origin,
+			// so the client sends the same one a browser would.
+			const headers = { origin: ORIGIN, ...(options.headers ?? {}) };
+			if (jar.size) {
+				headers.cookie = [...jar].map(([name, value]) => `${name}=${value}`).join('; ');
 			}
 			if (options.body !== undefined) {
 				headers['content-type'] = 'application/json';
@@ -43,11 +46,15 @@ function client() {
 				headers,
 				body: options.body === undefined ? undefined : JSON.stringify(options.body)
 			});
-			const setCookies = response.headers.getSetCookie?.() ?? [];
-			for (const value of setCookies) {
+			for (const value of response.headers.getSetCookie()) {
 				const [pair] = value.split(';');
-				if (pair.startsWith('bt_session=')) {
-					cookie = pair.endsWith('bt_session=') ? '' : pair;
+				const index = pair.indexOf('=');
+				const name = pair.slice(0, index);
+				const cookieValue = pair.slice(index + 1);
+				if (cookieValue === '' || /max-age=0/i.test(value)) {
+					jar.delete(name);
+				} else {
+					jar.set(name, cookieValue);
 				}
 			}
 			const text = await response.text();
@@ -88,57 +95,58 @@ console.log(`\nAPI ${BASE}\n`);
 
 // ---------------------------------------------------------------- accounts
 console.log('accounts');
-let res = await alice.request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: handleA, displayName: 'Aisha', password }
-});
-check('register returns 201', res.status === 201, `got ${res.status}`);
-check('register returns the user', res.body?.user?.handle === handleA);
+function signUp(handle, displayName, password) {
+	return {
+		method: 'POST',
+		body: {
+			email: `${handle}@tracker.invalid`,
+			password,
+			name: displayName,
+			username: handle
+		}
+	};
+}
 
-res = await bob.request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: handleB, displayName: 'Bilal', password }
-});
-check('second register returns 201', res.status === 201);
+let res = await alice.request('/auth/sign-up/email', signUp(handleA, 'Aisha', password));
+check('sign-up returns 200', res.status === 200, `got ${res.status}`);
+check('sign-up returns the user', res.body?.user?.username === handleA);
 
-res = await carol.request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: handleC, displayName: 'Chadi', password }
-});
-check('third register returns 201', res.status === 201);
+res = await bob.request('/auth/sign-up/email', signUp(handleB, 'Bilal', password));
+check('second sign-up returns 200', res.status === 200);
 
-res = await client().request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: handleA, displayName: 'Copy', password }
-});
-check('duplicate handle rejected with 409', res.status === 409, `got ${res.status}`);
+res = await carol.request('/auth/sign-up/email', signUp(handleC, 'Chadi', password));
+check('third sign-up returns 200', res.status === 200);
 
-res = await client().request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: 'x', displayName: 'Too short', password }
-});
-check('short handle rejected with 400', res.status === 400);
+res = await client().request('/auth/sign-up/email', signUp(handleA, 'Copy', password));
+check(
+	'duplicate handle rejected',
+	res.status === 400 && res.body?.code === 'USERNAME_IS_ALREADY_TAKEN',
+	`got ${res.status} ${JSON.stringify(res.body)}`
+);
 
-res = await client().request('/v2/auth/register', {
-	method: 'POST',
-	body: { handle: `d_${suffix}`, displayName: 'Dave', password: 'short' }
-});
-check('short password rejected with 400', res.status === 400);
+res = await client().request('/auth/sign-up/email', signUp('x', 'Too short', password));
+check('short handle rejected', res.status >= 400 && res.status < 500, `got ${res.status}`);
 
-res = await client().request('/v2/auth/login', {
+res = await client().request(
+	'/auth/sign-up/email',
+	signUp(`d_${suffix}`, 'Dave', 'short')
+);
+check('short password rejected', res.status >= 400 && res.status < 500, `got ${res.status}`);
+
+res = await client().request('/auth/sign-in/username', {
 	method: 'POST',
-	body: { handle: handleA, password: 'fel-lösenord' }
+	body: { username: handleA, password: 'fel-losenord' }
 });
-check('wrong password rejected with 401', res.status === 401);
+check('wrong password rejected with 401', res.status === 401, `got ${res.status}`);
 
 const stranger = client();
-res = await stranger.request('/v2/auth/login', {
+res = await stranger.request('/auth/sign-in/username', {
 	method: 'POST',
-	body: { handle: handleA, password }
+	body: { username: handleA, password }
 });
-check('login returns 200', res.status === 200, `got ${res.status}`);
+check('sign-in returns 200', res.status === 200, `got ${res.status}`);
 res = await stranger.request('/v2/me');
-check('login sets a working session cookie', res.status === 200 && res.body?.user?.handle === handleA);
+check('sign-in sets a working session cookie', res.status === 200 && res.body?.user?.handle === handleA);
 
 res = await client().request('/v2/me');
 check('anonymous /v2/me is 401', res.status === 401);
@@ -328,8 +336,8 @@ check('friendship gone on both sides', res.body.friends.length === 0);
 
 // ----------------------------------------------------------------- logout
 console.log('\nsession');
-res = await alice.request('/v2/auth/logout', { method: 'POST' });
-check('logout works', res.status === 200);
+res = await alice.request('/auth/sign-out', { method: 'POST', body: {} });
+check('sign-out works', res.status === 200);
 res = await alice.request('/v2/me');
 check('session is gone after logout', res.status === 401);
 

@@ -2,16 +2,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { D1Database } from '@cloudflare/workers-types';
 import { Env } from '../../cf-types';
-import {
-	currentUser,
-	endSession,
-	hashPassword,
-	newId,
-	requireUser,
-	startSession,
-	verifyPassword,
-	type SessionUser
-} from '../lib/auth';
+import { currentUser, type SessionUser } from '../lib/auth';
 import { addDays, daysBetween, isValidDay, today as todayInStockholm } from '../lib/days';
 import {
 	countOf,
@@ -35,6 +26,19 @@ import {
 } from '../lib/tracking';
 
 const HANDLE_PATTERN = /^[a-z0-9_]{3,20}$/;
+const newId = (prefix: string) => `${prefix}_${crypto.randomUUID()}`;
+
+/**
+ * Better Auth owns sign-up, sign-in and sign-out (mounted at /auth/*), so this
+ * file only needs to resolve the session and answer 401 when it is missing.
+ */
+async function requireUser(c: Context<{ Bindings: Env }>): Promise<SessionUser | null> {
+	const user = await currentUser(c.env, c.req.raw.headers);
+	if (!user) {
+		c.status(401);
+	}
+	return user;
+}
 const DEFAULT_NUDGE = 'Jag tänker på dig. Hur går det med bönerna?';
 const MAX_FRIENDS = 50;
 
@@ -57,25 +61,6 @@ function parseContext(value: string | null): Record<string, unknown> | null {
 	} catch {
 		return null;
 	}
-}
-
-interface PublicUser {
-	id: string;
-	handle: string;
-	displayName: string;
-}
-
-function toPublicUser(row: {
-	id: string;
-	handle: string;
-	display_name?: string;
-	displayName?: string;
-}): PublicUser {
-	return {
-		id: row.id,
-		handle: row.handle,
-		displayName: row.displayName ?? row.display_name ?? row.handle
-	};
 }
 
 /** Ids of everyone this user is accepted friends with. */
@@ -140,79 +125,9 @@ function withJamaah(
 
 export function registerV2(app: Hono<{ Bindings: Env }>) {
 	// ---------------------------------------------------------------- accounts
-
-	app.post('/v2/auth/register', async (c) => {
-		const body = await c.req.json().catch(() => null);
-		if (!body) {
-			return badRequest(c, 'invalid_body');
-		}
-
-		const handle = normalizeHandle(body.handle);
-		const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
-		const password = typeof body.password === 'string' ? body.password : '';
-
-		if (!HANDLE_PATTERN.test(handle)) {
-			return badRequest(c, 'invalid_handle');
-		}
-		if (displayName.length < 1 || displayName.length > 40) {
-			return badRequest(c, 'invalid_display_name');
-		}
-		if (password.length < 8 || password.length > 200) {
-			return badRequest(c, 'invalid_password');
-		}
-
-		const existing = await c.env.db
-			.prepare('SELECT id FROM users WHERE handle = ?')
-			.bind(handle)
-			.first();
-		if (existing) {
-			c.status(409);
-			return c.json({ error: 'handle_taken' });
-		}
-
-		const id = newId('usr');
-		const passwordHash = await hashPassword(password);
-		await c.env.db
-			.prepare(
-				`INSERT INTO users (id, handle, display_name, password_hash, created_at)
-				 VALUES (?, ?, ?, ?, ?)`
-			)
-			.bind(id, handle, displayName, passwordHash, Date.now())
-			.run();
-
-		await startSession(c, id);
-		c.status(201);
-		return c.json({ user: { id, handle, displayName } });
-	});
-
-	app.post('/v2/auth/login', async (c) => {
-		const body = await c.req.json().catch(() => null);
-		if (!body) {
-			return badRequest(c, 'invalid_body');
-		}
-
-		const handle = normalizeHandle(body.handle);
-		const password = typeof body.password === 'string' ? body.password : '';
-
-		const user = await c.env.db
-			.prepare('SELECT id, handle, display_name, password_hash FROM users WHERE handle = ?')
-			.bind(handle)
-			.first<{ id: string; handle: string; display_name: string; password_hash: string }>();
-
-		// Same answer for an unknown handle and a wrong password.
-		if (!user || !(await verifyPassword(password, user.password_hash))) {
-			c.status(401);
-			return c.json({ error: 'invalid_credentials' });
-		}
-
-		await startSession(c, user.id);
-		return c.json({ user: toPublicUser(user) });
-	});
-
-	app.post('/v2/auth/logout', async (c) => {
-		await endSession(c);
-		return c.json({ ok: true });
-	});
+	//
+	// Sign-up, sign-in and sign-out are Better Auth's endpoints, mounted in
+	// src/index.ts at /auth/*; the website calls them through the same proxy.
 
 	// -------------------------------------------------------------------- me
 
@@ -330,9 +245,9 @@ export function registerV2(app: Hono<{ Bindings: Env }>) {
 		const { results: links } = await c.env.db
 			.prepare(
 				`SELECT f.id, f.requester_id, f.addressee_id, f.status, f.created_at,
-				        u.id AS other_id, u.handle AS other_handle, u.display_name AS other_name
+				        u.id AS other_id, u.username AS other_handle, u.name AS other_name
 				 FROM friendships f
-				 JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
+				 JOIN "user" u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
 				 WHERE f.requester_id = ? OR f.addressee_id = ?`
 			)
 			.bind(me.id, me.id, me.id)
@@ -438,9 +353,9 @@ export function registerV2(app: Hono<{ Bindings: Env }>) {
 		}
 
 		const target = await c.env.db
-			.prepare('SELECT id, handle, display_name FROM users WHERE handle = ?')
+			.prepare('SELECT id, username, name FROM "user" WHERE username = ?')
 			.bind(handle)
-			.first<{ id: string; handle: string; display_name: string }>();
+			.first<{ id: string; username: string; name: string }>();
 		if (!target) {
 			c.status(404);
 			return c.json({ error: 'user_not_found' });
@@ -612,9 +527,9 @@ export function registerV2(app: Hono<{ Bindings: Env }>) {
 		const { results } = await c.env.db
 			.prepare(
 				`SELECT n.id, n.type, n.context, n.created_at, n.read_at,
-				        u.id AS subject_id, u.handle AS subject_handle, u.display_name AS subject_name
+				        u.id AS subject_id, u.username AS subject_handle, u.name AS subject_name
 				 FROM notifications n
-				 LEFT JOIN users u ON u.id = n.subject_user_id
+				 LEFT JOIN "user" u ON u.id = n.subject_user_id
 				 WHERE n.user_id = ?
 				 ORDER BY n.created_at DESC
 				 LIMIT 50`

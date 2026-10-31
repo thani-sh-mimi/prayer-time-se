@@ -19,49 +19,88 @@ export const prayerTimes = sqliteTable(
 	})
 );
 
-export const metadata = sqliteTable(
-	'metadata',
-	{
-		key: text('key').primaryKey(),
-		value: text('value').notNull()
-	}
-);
+export const metadata = sqliteTable('metadata', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull()
+});
 
 /**
- * A tracked account. Handles are stored lowercase and are the only public
- * identifier a friend needs; the numeric id never leaves the server.
+ * The four tables below are Better Auth's core schema. Better Auth owns
+ * identity: passwords are hashed with its scrypt implementation, sessions are
+ * signed cookies, and the `username` plugin adds the handle people share.
+ *
+ * `username` is what the app calls a handle; `name` is the display name.
  */
-export const users = sqliteTable(
-	'users',
+export const user = sqliteTable('user', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	email: text('email').notNull().unique(),
+	emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
+	image: text('image'),
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+	username: text('username').unique(),
+	displayUsername: text('display_username')
+});
+
+export const session = sqliteTable(
+	'session',
 	{
 		id: text('id').primaryKey(),
-		handle: text('handle').notNull().unique(),
-		displayName: text('display_name').notNull(),
-		passwordHash: text('password_hash').notNull(),
-		createdAt: integer('created_at').notNull()
-	}
-);
-
-/**
- * Sessions are stored as a hash of the cookie token, so a database leak does
- * not hand out live sessions.
- */
-export const sessions = sqliteTable(
-	'sessions',
-	{
-		tokenHash: text('token_hash').primaryKey(),
 		userId: text('user_id').notNull(),
-		createdAt: integer('created_at').notNull(),
-		expiresAt: integer('expires_at').notNull()
+		token: text('token').notNull().unique(),
+		expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+		ipAddress: text('ip_address'),
+		userAgent: text('user_agent'),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 	},
 	(table) => ({
-		userIndex: index('idx_sessions_user').on(table.userId)
+		userIndex: index('idx_session_user').on(table.userId)
+	})
+);
+
+export const account = sqliteTable(
+	'account',
+	{
+		id: text('id').primaryKey(),
+		accountId: text('account_id').notNull(),
+		providerId: text('provider_id').notNull(),
+		userId: text('user_id').notNull(),
+		accessToken: text('access_token'),
+		refreshToken: text('refresh_token'),
+		idToken: text('id_token'),
+		accessTokenExpiresAt: integer('access_token_expires_at', { mode: 'timestamp' }),
+		refreshTokenExpiresAt: integer('refresh_token_expires_at', { mode: 'timestamp' }),
+		scope: text('scope'),
+		password: text('password'),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
+	},
+	(table) => ({
+		userIndex: index('idx_account_user').on(table.userId)
+	})
+);
+
+export const verification = sqliteTable(
+	'verification',
+	{
+		id: text('id').primaryKey(),
+		identifier: text('identifier').notNull(),
+		value: text('value').notNull(),
+		expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp' }),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+	},
+	(table) => ({
+		identifierIndex: index('idx_verification_identifier').on(table.identifier)
 	})
 );
 
 /**
  * One row per prayer a user has marked. `day` is the local (Europe/Stockholm)
  * date as YYYY-MM-DD, so a mark made after midnight belongs to the right day.
+ * `user_id` holds Better Auth's user id.
  */
 export const prayerMarks = sqliteTable(
 	'prayer_marks',

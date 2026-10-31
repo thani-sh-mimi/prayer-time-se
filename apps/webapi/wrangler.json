@@ -22,5 +22,11 @@
 		"crons": [
 			"0 19 * * *"
 		]
+	},
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"BETTER_AUTH_URL": "https://xn--bnetider-n4a.nu"
 	}
 }
