@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -119,7 +120,6 @@ fun JournalRouteView(
     onMonthChange: (YearMonth) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val todayCount = PrayerJournal.count(journal, today)
     val streak = PrayerJournal.streak(journal, today)
     val week = PrayerJournal.week(journal, today)
@@ -134,7 +134,7 @@ fun JournalRouteView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = context.getString(R.string.route_journal_title),
+            text = stringResource(R.string.route_journal_title),
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
@@ -151,12 +151,12 @@ fun JournalRouteView(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
                 value = "$todayCount/5",
-                label = context.getString(R.string.route_journal_today),
+                label = stringResource(R.string.route_journal_today),
                 modifier = Modifier.weight(1f),
             )
             StatCard(
                 value = "$streak",
-                label = context.getString(R.string.route_journal_streak),
+                label = stringResource(R.string.route_journal_streak),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -187,7 +187,7 @@ fun JournalRouteView(
         }
 
         Text(
-            text = context.getString(R.string.route_journal_hint),
+            text = stringResource(R.string.route_journal_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 12.dp, start = 4.dp),
@@ -214,16 +214,30 @@ fun JournalRouteView(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = context.getString(R.string.route_journal_local),
+                text = stringResource(R.string.route_journal_local),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(onClick = onClear) {
-                Text(context.getString(R.string.route_journal_clear))
+                Text(stringResource(R.string.route_journal_clear))
             }
         }
 
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * labelRes is the string resource for a prayer, resolved configuration-aware.
+ */
+private fun labelRes(prayer: PrayerTimeType): Int {
+    return when (prayer) {
+        PrayerTimeType.fajr -> R.string.prayers_type_fajr
+        PrayerTimeType.dhohr -> R.string.prayers_type_dhohr
+        PrayerTimeType.asr -> R.string.prayers_type_asr
+        PrayerTimeType.maghrib -> R.string.prayers_type_maghrib
+        PrayerTimeType.isha -> R.string.prayers_type_isha
+        else -> R.string.prayers_type_fajr
     }
 }
 
@@ -267,7 +281,6 @@ private fun PrayerRow(
     marked: Boolean,
     onClick: () -> Unit,
 ) {
-    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -276,7 +289,7 @@ private fun PrayerRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = prayer.getLabel(context),
+            text = stringResource(labelRes(prayer)),
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(Modifier.weight(1f))
@@ -372,7 +385,6 @@ private fun MonthGrid(
     month: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
 ) {
-    val context = LocalContext.current
     val first = month.atDay(1)
     val offset = (first.dayOfWeek.value - 1 + 7) % 7
     val days = month.lengthOfMonth()
@@ -457,7 +469,7 @@ private fun MonthGrid(
             }
 
             Text(
-                text = context.getString(R.string.route_journal_history_hint),
+                text = stringResource(R.string.route_journal_history_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
