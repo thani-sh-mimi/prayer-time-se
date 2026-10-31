@@ -17,5 +17,10 @@
 			"database_name": "prayer-time-se",
 			"database_id": "09a179eb-6be6-41bf-9de8-e185d955218a"
 		}
-	]
+	],
+	"triggers": {
+		"crons": [
+			"0 19 * * *"
+		]
+	}
 }

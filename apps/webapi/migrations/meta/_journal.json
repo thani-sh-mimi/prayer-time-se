@@ -22,6 +22,13 @@
       "when": 1788280620000,
       "tag": "0002_city_index",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793442224035,
+      "tag": "0003_lyrical_thor",
+      "breakpoints": true
     }
   ]
 }

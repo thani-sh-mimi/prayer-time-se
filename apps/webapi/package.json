@@ -10,7 +10,8 @@
 		"test": "vitest --passWithNoTests",
 		"type": "wrangler types",
 		"db:update": "bash scripts/db-update.sh",
-		"db:verify": "tsx scripts/db-verify.ts"
+		"db:verify": "tsx scripts/db-verify.ts",
+		"test:social": "node scripts/e2e-social.mjs"
 	},
 	"dependencies": {
 		"@cloudflare/workers-types": "^4.20250124.3",
